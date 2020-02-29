@@ -97,7 +97,7 @@
 
         async function paginate(option) {
             if (option) {
-                if(option == "initial" && (content.nextPageToken || content.prevPageToken)) {
+                if(option == "initial" && content.nextPageToken) {
                     pos = 1;
                     totalPages = Math.ceil(content.pageInfo.totalResults/content.pageInfo.resultsPerPage);
                     pageIndex = [];
