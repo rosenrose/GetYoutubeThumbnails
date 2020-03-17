@@ -108,7 +108,9 @@
                         temp = await getData(request.playlistInput+"&pageToken="+temp.nextPageToken);
                     }
                 }
-                document.getElementById("pagePos").textContent = `${pos}/${totalPages}`;
+                if (typeof pos != "undefined" && typeof totalPages != "undefined") {
+                    document.getElementById("pagePos").textContent = `${pos}/${totalPages}`;
+                }
             }
 
             itemContainer = document.getElementById("itemContainer")
