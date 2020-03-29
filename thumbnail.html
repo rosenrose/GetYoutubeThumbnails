@@ -108,9 +108,9 @@
                         temp = await getData(request.playlistInput+"&pageToken="+temp.nextPageToken);
                     }
                 }
-                if (typeof pos != "undefined" && typeof totalPages != "undefined") {
-                    document.getElementById("pagePos").textContent = `${pos}/${totalPages}`;
-                }
+				if (typeof pos != "undefined" && typeof totalPages != "undefined") {
+					document.getElementById("pagePos").textContent = `${pos}/${totalPages}`;
+				}
             }
 
             itemContainer = document.getElementById("itemContainer")
@@ -119,18 +119,18 @@
             }
             for (video of videos) {
                 item = document.createElement("div");
-                item.setAttribute("class", "item");
+                item.className = "item";
 
                 item_image_link = document.createElement("a");
-                item_image_link.setAttribute("href", getMax(video).url);
-                item_image_link.setAttribute("target", "_blank");
+                item_image_link.href = getMax(video).url;
+                item_image_link.target = "_blank";
                 item_image = document.createElement("img");
-                item_image.setAttribute("src", getMax(video).url);
+                item_image.src = getMax(video).url;
                 item_image_link.appendChild(item_image);
 
                 item_title = document.createElement("a");
-                item_title.setAttribute("href", "https://youtu.be/"+video.snippet.resourceId.videoId);
-                item_title.setAttribute("target", "_blank");
+                item_title.href = "https://youtu.be/"+video.snippet.resourceId.videoId;
+                item_title.target = "_blank";
                 item_title.textContent = video.snippet.title;
 
                 item.appendChild(item_image_link);
