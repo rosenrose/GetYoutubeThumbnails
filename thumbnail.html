@@ -62,7 +62,7 @@
         var auth = yourapikey // See https://developers.google.com/youtube/v3/getting-started
 
         function api(type) {
-            var id = document.getElementById(type).value;
+            var id = document.querySelector("#"+type).value;
             id = regex[type].exec(id)[2];
             request = {
                 "videoInput": `https://www.googleapis.com/youtube/v3/videos?id=${id}&key=${auth}&part=snippet`,
@@ -86,12 +86,12 @@
                 displayControl(content.prevPageToken, "prev", "inline");
             }
             else if (videos.length == 1) {
-                document.getElementById("single").src = getMax(videos[0]).url;
+                document.querySelector("#single").src = getMax(videos[0]).url;
             }
             displayControl(videos.length == 1, "single", "block");
             displayControl(videos.length > 1, "multi", "block");
-            document.getElementById("requestUrl").textContent = url;
-            document.getElementById("response").textContent = JSON.stringify(content,null,2);
+            document.querySelector("#requestUrl").textContent = url;
+            document.querySelector("#response").textContent = JSON.stringify(content,null,2);
             return;
         }
 
@@ -104,16 +104,16 @@
                     let temp = JSON.parse(JSON.stringify(content));
                     for (let i=1; temp.nextPageToken; i++){
                         pageIndex.push(temp.nextPageToken);
-                        document.getElementById("requestUrl").textContent = `Getting playlists...${i}/${totalPages}`;
+                        document.querySelector("#requestUrl").textContent = `Getting playlists...${i}/${totalPages}`;
                         temp = await getData(request.playlistInput+"&pageToken="+temp.nextPageToken);
                     }
                 }
-				if (typeof pos != "undefined" && typeof totalPages != "undefined") {
-					document.getElementById("pagePos").textContent = `${pos}/${totalPages}`;
-				}
+                if (typeof pos != "undefined" && typeof totalPages != "undefined") {
+                    document.querySelector("#pagePos").textContent = `${pos}/${totalPages}`;
+                }
             }
 
-            itemContainer = document.getElementById("itemContainer")
+            itemContainer = document.querySelector("#itemContainer")
             while (itemContainer.hasChildNodes()) {
                 itemContainer.removeChild(itemContainer.firstChild);
             }
@@ -146,12 +146,11 @@
             if (mutex) {
                 mutex = false;
                 if (option == "pageInput") {
-                    pos = parseInt(document.getElementById("pageInput").value)
+                    pos = parseInt(document.querySelector("#pageInput").value)
                     if (pos > 1 && pos <= pageIndex.length+1) {
                         await setContent(request.playlistInput+"&pageToken="+pageIndex[pos-2], "nav");
                     }
-                    else {
-                        pos = 1;
+                    else if (pos == 1) {
                         await setContent(request.playlistInput, "nav");
                     }
                 }
@@ -181,10 +180,10 @@
 
         function displayControl(condition,id,style) {
             if (condition) {
-                document.getElementById(id).style.display = style;
+                document.querySelector("#"+id).style.display = style;
             }
             else {
-                document.getElementById(id).style.display = "none";
+                document.querySelector("#"+id).style.display = "none";
             }
         }
     </script>
