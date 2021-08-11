@@ -3,14 +3,8 @@
 <head>
     <meta charset='utf-8'>
     <style>
-        #videoInput {
-            width: 320px;
-        }
-        #playlistInput {
-            width: 300px;
-        }
-        #pageInput {
-            width: 20px;
+        #urlInput {
+            width: 20em;
         }
         #response {
             white-space: pre-wrap;
@@ -21,12 +15,10 @@
         #multi {
             display: none;
         }
-        #nav {
+        
+        .nav {
             display: none;
             text-align: center;
-        }
-        #pagePos {
-            display: inline;
         }
         .item {
             display: inline-block;
@@ -36,155 +28,172 @@
         .item img {
             width: 100%;
         }
+        .pagePos {
+            display: inline;
+        }
+        .pageInput {
+            width: 20px;
+            background-color: #fff;
+        }
     </style>
 </head>
 <body>
-    <input type="text" id="videoInput" placeholder="Enter video id or url"><button type="button" onclick="api('videoInput')">video</button>
-    <input type="text" id="playlistInput" placeholder="Enter playlist id or url"><button type="button" onclick="api('playlistInput')">playlist</button>
+    <input type="text" id="urlInput" placeholder="Enter video id or playlist id or url"><button type="button" id="urlInputBtn">input</button>
     <p id="requestUrl"></p>
     <img src="" id="single">
     <div id="multi">
-        <div id="nav">
-            <button type="button" id="prev" onclick="pageMove('prevPageToken')">Prev</button>
-            <p id="pagePos"></p>
-            <input id="pageInput" type="text" inputmode="numeric" pattern="[0-9]*"><button type="button" onclick="pageMove('pageInput')">go</button>
-            <button type="button" id="next" onclick="pageMove('nextPageToken')">Next</button>
+        <div class="nav">
+            <button type="button" class="prev">Prev</button>
+            <p class="pagePos"></p>
+            <input type="text" class="pageInput" inputmode="numeric" pattern="[0-9]*"><button type="button" class="go">Go</button>
+            <button type="button" class="next">Next</button>
         </div>
         <div id="itemContainer"></div>
+        <div class="nav">
+            <button type="button" class="prev">Prev</button>
+            <p class="pagePos"></p>
+            <input type="text" class="pageInput" inputmode="numeric" pattern="[0-9]*"><button type="button" class="go">Go</button>
+            <button type="button" class="next">Next</button>
+        </div>
     </div>
     <pre id="response"></pre>
     <script>
-        var maxResults = 12;
-        var regex = {
-            "videoInput": new RegExp("(watch\\?v=|youtu.be/)?([a-zA-Z0-9_\\-]{11})"),
-            "playlistInput": new RegExp("(playlist\\?list=)?(PL[a-zA-Z0-9_\\-]{32})")
-        };
-        var auth = yourapikey // See https://developers.google.com/youtube/v3/getting-started
-
-        function api(type) {
-            var id = document.querySelector("#"+type).value;
-            id = regex[type].exec(id)[2];
-            request = {
-                "videoInput": `https://www.googleapis.com/youtube/v3/videos?id=${id}&key=${auth}&part=snippet`,
-                "playlistInput": `https://www.googleapis.com/youtube/v3/playlistItems?playlistId=${id}&key=${auth}&part=snippet&maxResults=${maxResults}`
-            };
-            setContent(request[type], "initial");
-        }
+        const maxResults = 12;
+        videoRegex = /(?<=(watch\?v=|youtu.be\/)?)[\w\-]{11}/;
+        playlistRegex = /(?<=(playlist\?list=)?)[\w\-]{34,}/;
+        auth = yourapikey // See https://developers.google.com/youtube/v3/getting-started
+        
+        document.querySelector("#urlInputBtn").addEventListener("click", event => {
+            let input = document.querySelector("#urlInput").value;
+            if (result = playlistRegex.exec(input)) {
+                api = `https://www.googleapis.com/youtube/v3/playlistItems?playlistId=${result[0]}&key=${auth}&part=snippet&maxResults=${maxResults}`;
+            }
+            else if (result = videoRegex.exec(input)) {
+                api = `https://www.googleapis.com/youtube/v3/videos?id=${result[0]}&key=${auth}&part=snippet`;
+            }
+            getData(api);
+        });
 
         function getData(url) {
-            return fetch(url)
-                .then(response => response.json());
-        }
-
-        async function setContent(url, option) {
-            content = await getData(url);
-            videos = content.items;
-            if (videos.length > 1) {
-                await paginate(option);
-                displayControl(content.nextPageToken || content.prevPageToken, "nav", "block");
-                displayControl(content.nextPageToken, "next", "inline");
-                displayControl(content.prevPageToken, "prev", "inline");
-            }
-            else if (videos.length == 1) {
-                document.querySelector("#single").src = getMax(videos[0]).url;
-            }
-            displayControl(videos.length == 1, "single", "block");
-            displayControl(videos.length > 1, "multi", "block");
-            document.querySelector("#requestUrl").textContent = url;
-            document.querySelector("#response").textContent = JSON.stringify(content,null,2);
-            return;
-        }
-
-        async function paginate(option) {
-            if (option) {
-                if(option == "initial" && content.nextPageToken) {
-                    pos = 1;
-                    totalPages = Math.ceil(content.pageInfo.totalResults/content.pageInfo.resultsPerPage);
-                    pageIndex = [];
-                    let temp = JSON.parse(JSON.stringify(content));
-                    for (let i=1; temp.nextPageToken; i++){
-                        pageIndex.push(temp.nextPageToken);
-                        document.querySelector("#requestUrl").textContent = `Getting playlists...${i}/${totalPages}`;
-                        temp = await getData(request.playlistInput+"&pageToken="+temp.nextPageToken);
+            fetch(url)
+            .then(response => response.json())
+            .then(content => {
+                document.querySelector("#requestUrl").textContent = url;
+                document.querySelector("#response").textContent = JSON.stringify(content,null,2);
+                let videos = content.items;
+                if (videos.length == 1) {
+                    document.querySelector("#single").src = getMax(videos[0]).url;
+                }
+                else {
+                    setContent(videos);
+                    if (content.nextPageToken) {
+                        pos = 1;
+                        toggleDisplay(pos > 1, "inline", ...document.querySelectorAll(".prev"));
+                        totalPages = Math.ceil(content.pageInfo.totalResults/content.pageInfo.resultsPerPage);
+                        document.querySelectorAll(".pagePos").forEach(p => {p.textContent = `${pos}/${totalPages}`;});
+                        pages = [[content,url]];
+                        paginate(content, 1);
                     }
                 }
-                if (typeof pos != "undefined" && typeof totalPages != "undefined") {
-                    document.querySelector("#pagePos").textContent = `${pos}/${totalPages}`;
-                }
-            }
+                toggleDisplay(videos.length == 1, "block", document.querySelector("#single"));
+                toggleDisplay(videos.length > 1, "block", document.querySelector("#multi"));
+                toggleDisplay(content.nextPageToken, "block", ...document.querySelectorAll(".nav"));
+            });
+        }
 
-            itemContainer = document.querySelector("#itemContainer")
+        function setContent(videos) {
+            let itemContainer = document.querySelector("#itemContainer");
             while (itemContainer.hasChildNodes()) {
-                itemContainer.removeChild(itemContainer.firstChild);
+                itemContainer.firstChild.remove();
             }
-            for (video of videos) {
-                item = document.createElement("div");
+            for (let video of videos) {
+                let item = document.createElement("div");
                 item.className = "item";
-
-                item_image_link = document.createElement("a");
+                let item_image_link = document.createElement("a");
                 item_image_link.href = getMax(video).url;
                 item_image_link.target = "_blank";
-                item_image = document.createElement("img");
+                let item_image = document.createElement("img");
                 item_image.src = getMax(video).url;
-                item_image_link.appendChild(item_image);
-
-                item_title = document.createElement("a");
+                let item_title = document.createElement("a");
                 item_title.href = "https://youtu.be/"+video.snippet.resourceId.videoId;
                 item_title.target = "_blank";
                 item_title.textContent = video.snippet.title;
-
+                
+                item_image_link.appendChild(item_image);
                 item.appendChild(item_image_link);
                 item.appendChild(item_title);
                 itemContainer.appendChild(item);
             }
         }
 
-        async function pageMove(option) {
-            if (typeof mutex == "undefined") {
-                mutex = true;
+        function paginate(content, iter) {
+            if(content.nextPageToken) {
+                let request = `${api}&pageToken=${content.nextPageToken}`;
+                fetch(request)
+                .then(response => response.json())
+                .then(json => {
+                    pages.push([json, request]);
+                    if (json.nextPageToken) {
+                        paginate(json, iter+1);
+                    }
+                    else {
+                        pos = 1;
+                        document.querySelector("#requestUrl").textContent = api;
+                    }
+                });
+                document.querySelector("#requestUrl").textContent = `Getting playlists...${iter}/${totalPages}`;
             }
-            if (mutex) {
-                mutex = false;
-                if (option == "pageInput") {
-                    pos = parseInt(document.querySelector("#pageInput").value)
-                    if (pos > 1 && pos <= pageIndex.length+1) {
-                        await setContent(request.playlistInput+"&pageToken="+pageIndex[pos-2], "nav");
-                    }
-                    else if (pos == 1) {
-                        await setContent(request.playlistInput, "nav");
-                    }
-                }
-                else {
-                    if (option == "nextPageToken") {
-                        pos+=1;
-                    }
-                    else if (option == "prevPageToken") {
-                        pos-=1;
-                    }
-                    await setContent(request.playlistInput+"&pageToken="+content[option], option);
-                }
-                mutex = true;
-            }            
         }
 
+        document.querySelectorAll(".nav button").forEach(btn => {
+            btn.addEventListener("click", event => {
+                switch (event.target.className) {
+                    case "next":
+                        if (pos < pages.length) {
+                            pos += 1;
+                        }
+                        break;
+                    case "prev":
+                        if (pos > 1) {
+                            pos -= 1;
+                        }
+                        break;
+                    case "go":
+                        let temp = parseInt(event.target.previousElementSibling.value);
+                        if (temp >= 1 && temp <= pages.length) {
+                            pos = temp;
+                        }
+                        break;
+                    }
+                setContent(pages[pos-1][0].items);
+                document.querySelector("#requestUrl").textContent = pages[pos-1][1];
+                document.querySelectorAll(".pagePos").forEach(p => {p.textContent = `${pos}/${totalPages}`;});
+                document.querySelector("#response").textContent = JSON.stringify(pages[pos-1][0],null,2);
+                toggleDisplay(pos < pages.length, "inline", ...document.querySelectorAll(".next"));
+                toggleDisplay(pos > 1, "inline", ...document.querySelectorAll(".prev"));
+            });
+        });
+
         function getMax(video) {
-            thumbnail = video.snippet.thumbnails;
+            let thumbnail = video.snippet.thumbnails;
             if (thumbnail) {
-                keys = Object.keys(thumbnail);
-                return thumbnail[keys[keys.length-1]];
+                let keys = Object.keys(thumbnail);
+                if (keys.length) {
+                    return thumbnail[keys[keys.length-1]];
+                }
+                else {
+                    return {url: ""};    
+                }
             }
             else {
                 return {url: ""};
             }
         }
 
-        function displayControl(condition,id,style) {
-            if (condition) {
-                document.querySelector("#"+id).style.display = style;
-            }
-            else {
-                document.querySelector("#"+id).style.display = "none";
-            }
+        function toggleDisplay(condition, display, ...elems) {
+            elems.forEach(elem => {
+                elem.style.display = (condition)? display : "none";
+            })
         }
     </script>
 </body>
