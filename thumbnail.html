@@ -32,7 +32,7 @@
             display: inline;
         }
         .pageInput {
-            width: 20px;
+            width: 2em;
             background-color: #fff;
         }
     </style>
@@ -141,7 +141,7 @@
                         document.querySelector("#requestUrl").textContent = api;
                     }
                 });
-                document.querySelector("#requestUrl").textContent = `Getting playlists...${iter}/${totalPages}`;
+                document.querySelector("#requestUrl").textContent = `Getting playlists... ${iter}/${totalPages}`;
             }
         }
 
@@ -164,7 +164,7 @@
                             pos = temp;
                         }
                         break;
-                    }
+                }
                 setContent(pages[pos-1][0].items);
                 document.querySelector("#requestUrl").textContent = pages[pos-1][1];
                 document.querySelectorAll(".pagePos").forEach(p => {p.textContent = `${pos}/${totalPages}`;});
@@ -172,6 +172,19 @@
                 toggleDisplay(pos < pages.length, "inline", ...document.querySelectorAll(".next"));
                 toggleDisplay(pos > 1, "inline", ...document.querySelectorAll(".prev"));
             });
+        });
+
+        document.addEventListener("keydown", event => {
+            if (document.querySelector(".nav").style.display != "none") {
+                switch (event.key) {
+                    case "ArrowLeft":
+                        document.querySelector(".prev").click();
+                        break;
+                    case "ArrowRight":
+                        document.querySelector(".next").click();
+                        break;
+                }
+            }
         });
 
         function getMax(video) {
