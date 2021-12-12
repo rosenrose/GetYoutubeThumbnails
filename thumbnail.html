@@ -39,7 +39,6 @@
 </head>
 <body>
     <input type="text" id="urlInput" placeholder="Enter video id or playlist id or url"><button type="button" id="urlInputBtn">input</button>
-    <p id="requestUrl"></p>
     <img src="" id="single">
     <div id="multi">
         <div class="nav">
@@ -56,7 +55,16 @@
             <button type="button" class="next">Next</button>
         </div>
     </div>
+    <p id="requestUrl"></p>
     <pre id="response"></pre>
+    <template id="itemTemplate">
+        <div class="item">
+            <a href="" target="_blank">
+                <img src="">
+            </a>
+            <a href="" target="_blank"></a>
+        </div>
+    </template>
     <script>
         const maxResults = 12;
         videoRegex = /(?<=(watch\?v=|youtu.be\/)?)[\w\-]{11}/;
@@ -107,22 +115,18 @@
                 itemContainer.firstChild.remove();
             }
             for (let video of videos) {
-                let item = document.createElement("div");
-                item.className = "item";
-                let item_image_link = document.createElement("a");
+                let itemTemplate = document.querySelector("#itemTemplate");
+                let item = itemTemplate.content.firstElementChild.cloneNode(true);
+
+                let item_image_link = item.querySelector("a");
                 item_image_link.href = getMax(video).url;
-                item_image_link.target = "_blank";
-                let item_image = document.createElement("img");
+                let item_image = item.querySelector("img");
                 item_image.src = getMax(video).url;
-                let item_title = document.createElement("a");
-                item_title.href = "https://youtu.be/"+video.snippet.resourceId.videoId;
-                item_title.target = "_blank";
+                let item_title = item.querySelector("a + a");
+                item_title.href = `https://youtu.be/${video.snippet.resourceId.videoId}`;
                 item_title.textContent = video.snippet.title;
                 
-                item_image_link.appendChild(item_image);
-                item.appendChild(item_image_link);
-                item.appendChild(item_title);
-                itemContainer.appendChild(item);
+                itemContainer.append(item);
             }
         }
 
@@ -206,7 +210,7 @@
         function toggleDisplay(condition, display, ...elems) {
             elems.forEach(elem => {
                 elem.style.display = (condition)? display : "none";
-            })
+            });
         }
     </script>
 </body>
