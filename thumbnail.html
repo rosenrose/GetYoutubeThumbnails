@@ -12,18 +12,15 @@
         #single {
             margin: 10px 0;
         }
-        #multi {
-            display: none;
-        }
-        
+
         .nav {
-            display: none;
             text-align: center;
         }
         .item {
             display: inline-block;
-            margin: 5px;
-            max-width: 32.8%;
+            margin: 0.2em;
+            margin-bottom: 0.7em;
+            width: 32.8%;
         }
         .item img {
             width: 100%;
@@ -39,8 +36,12 @@
 </head>
 <body>
     <input type="text" id="urlInput" placeholder="Enter video id or playlist id or url"><button type="button" id="urlInputBtn">input</button>
-    <img src="" id="single">
-    <div id="multi">
+    <div id="single">
+        <a id="maxres" href="" target="_blank">
+            <img src="">
+        </a>
+    </div>
+    <div id="multi" hidden>
         <div class="nav">
             <button type="button" class="prev">Prev</button>
             <p class="pagePos"></p>
@@ -48,36 +49,38 @@
             <button type="button" class="next">Next</button>
         </div>
         <div id="itemContainer"></div>
-        <div class="nav">
+        <div class="nav" hidden>
             <button type="button" class="prev">Prev</button>
             <p class="pagePos"></p>
             <input type="text" class="pageInput" inputmode="numeric" pattern="[0-9]*"><button type="button" class="go">Go</button>
             <button type="button" class="next">Next</button>
         </div>
     </div>
-    <p id="requestUrl"></p>
+    <p id="responseUrl"></p>
     <pre id="response"></pre>
     <template id="itemTemplate">
-        <div class="item">
+        <figure class="item">
             <a href="" target="_blank">
                 <img src="">
             </a>
-            <a href="" target="_blank"></a>
-        </div>
+            <figcaption>
+                <a href="" target="_blank"></a>
+            </figcaption>
+        </figure>
     </template>
     <script>
         const maxResults = 12;
         videoRegex = /(?<=(watch\?v=|youtu.be\/)?)[\w\-]{11}/;
         playlistRegex = /(?<=(playlist\?list=)?)[\w\-]{34,}/;
-        auth = yourapikey // See https://developers.google.com/youtube/v3/getting-started
-        
+        auth = yourapikey; // See https://developers.google.com/youtube/v3/getting-started
+
         document.querySelector("#urlInputBtn").addEventListener("click", event => {
             let input = document.querySelector("#urlInput").value;
             if (result = playlistRegex.exec(input)) {
-                api = `https://www.googleapis.com/youtube/v3/playlistItems?playlistId=${result[0]}&key=${auth}&part=snippet&maxResults=${maxResults}`;
+                api = `https://www.googleapis.com/youtube/v3/playlistItems?playlistId=${result[0]}&key=${auth}&part=snippet,contentDetails&maxResults=${maxResults}`;
             }
             else if (result = videoRegex.exec(input)) {
-                api = `https://www.googleapis.com/youtube/v3/videos?id=${result[0]}&key=${auth}&part=snippet`;
+                api = `https://www.googleapis.com/youtube/v3/videos?id=${result[0]}&key=${auth}&part=snippet,contentDetails`;
             }
             getData(api);
         });
@@ -86,67 +89,58 @@
             fetch(url)
             .then(response => response.json())
             .then(content => {
-                document.querySelector("#requestUrl").textContent = url;
-                document.querySelector("#response").textContent = JSON.stringify(content,null,2);
+                document.querySelector("#responseUrl").textContent = url;
+                document.querySelector("#response").textContent = JSON.stringify(content, null, 2);
+
                 let videos = content.items;
                 if (videos.length == 1) {
-                    document.querySelector("#single").src = getMax(videos[0]).url;
+                    document.querySelector("#maxres").href = getMax(videos[0]).url;
+                    document.querySelector("#maxres img").src = getMax(videos[0]).url;
                 }
                 else {
                     setContent(videos);
                     if (content.nextPageToken) {
                         pos = 1;
-                        toggleDisplay(pos > 1, "inline", ...document.querySelectorAll(".prev"));
-                        totalPages = Math.ceil(content.pageInfo.totalResults/content.pageInfo.resultsPerPage);
+                        toggleDisplay(pos > 1, ...document.querySelectorAll(".prev"));
+                        totalPages = Math.ceil(content.pageInfo.totalResults / content.pageInfo.resultsPerPage);
                         document.querySelectorAll(".pagePos").forEach(p => {p.textContent = `${pos}/${totalPages}`;});
                         pages = [[content,url]];
-                        paginate(content, 1);
+                        paginate(content);
                     }
                 }
-                toggleDisplay(videos.length == 1, "block", document.querySelector("#single"));
-                toggleDisplay(videos.length > 1, "block", document.querySelector("#multi"));
-                toggleDisplay(content.nextPageToken, "block", ...document.querySelectorAll(".nav"));
+                selectDisplay(`#${(videos.length == 1)? "single" : "multi"}`, ...document.querySelectorAll("#single, #multi"));
+                toggleDisplay(content.nextPageToken, ...document.querySelectorAll(".nav"));
             });
         }
 
         function setContent(videos) {
             let itemContainer = document.querySelector("#itemContainer");
-            while (itemContainer.hasChildNodes()) {
-                itemContainer.firstChild.remove();
-            }
+            itemContainer.replaceChildren();
             for (let video of videos) {
-                let itemTemplate = document.querySelector("#itemTemplate");
-                let item = itemTemplate.content.firstElementChild.cloneNode(true);
+                let template = document.querySelector("#itemTemplate").content.cloneNode(true);
 
-                let item_image_link = item.querySelector("a");
+                let item_image_link = template.querySelector("a");
                 item_image_link.href = getMax(video).url;
-                let item_image = item.querySelector("img");
+                let item_image = template.querySelector("img");
                 item_image.src = getMax(video).url;
-                let item_title = item.querySelector("a + a");
+                let item_title = template.querySelector("figcaption a");
                 item_title.href = `https://youtu.be/${video.snippet.resourceId.videoId}`;
                 item_title.textContent = video.snippet.title;
-                
-                itemContainer.append(item);
+
+                itemContainer.append(template.firstElementChild);
             }
         }
 
-        function paginate(content, iter) {
-            if(content.nextPageToken) {
-                let request = `${api}&pageToken=${content.nextPageToken}`;
-                fetch(request)
-                .then(response => response.json())
-                .then(json => {
-                    pages.push([json, request]);
-                    if (json.nextPageToken) {
-                        paginate(json, iter+1);
-                    }
-                    else {
-                        pos = 1;
-                        document.querySelector("#requestUrl").textContent = api;
-                    }
-                });
-                document.querySelector("#requestUrl").textContent = `Getting playlists... ${iter}/${totalPages}`;
+        async function paginate(content) {
+            let json = content;
+
+            for (let i = 1; json.nextPageToken; i++) {
+                let request = `${api}&pageToken=${json.nextPageToken}`;
+                json = await (await fetch(request)).json();
+                pages.push([json, request]);
+                document.querySelector("#responseUrl").textContent = `Getting playlists... ${i}/${totalPages}`;
             }
+            document.querySelector("#responseUrl").textContent = api;
         }
 
         document.querySelectorAll(".nav button").forEach(btn => {
@@ -163,18 +157,18 @@
                         }
                         break;
                     case "go":
-                        let temp = parseInt(event.target.previousElementSibling.value);
-                        if (temp >= 1 && temp <= pages.length) {
-                            pos = temp;
+                        let go = parseInt(event.target.previousElementSibling.value);
+                        if (go >= 1 && go <= pages.length) {
+                            pos = go;
                         }
                         break;
                 }
                 setContent(pages[pos-1][0].items);
-                document.querySelector("#requestUrl").textContent = pages[pos-1][1];
+                document.querySelector("#responseUrl").textContent = pages[pos-1][1];
                 document.querySelectorAll(".pagePos").forEach(p => {p.textContent = `${pos}/${totalPages}`;});
                 document.querySelector("#response").textContent = JSON.stringify(pages[pos-1][0],null,2);
-                toggleDisplay(pos < pages.length, "inline", ...document.querySelectorAll(".next"));
-                toggleDisplay(pos > 1, "inline", ...document.querySelectorAll(".prev"));
+                toggleDisplay(pos < pages.length, ...document.querySelectorAll(".next"));
+                toggleDisplay(pos > 1, ...document.querySelectorAll(".prev"));
             });
         });
 
@@ -195,22 +189,43 @@
             let thumbnail = video.snippet.thumbnails;
             if (thumbnail) {
                 let keys = Object.keys(thumbnail);
+                //maxresdefault sddefault hqdefault mqdefault default
                 if (keys.length) {
-                    return thumbnail[keys[keys.length-1]];
+                    return thumbnail[keys.at(-1)];
                 }
-                else {
-                    return {url: ""};    
-                }
-            }
-            else {
                 return {url: ""};
             }
+            return {url: ""};
         }
 
-        function toggleDisplay(condition, display, ...elems) {
-            elems.forEach(elem => {
-                elem.style.display = (condition)? display : "none";
+        function toggleDisplay(condition, ...element) {
+            element.forEach(elem => {
+                elem.hidden = !condition;
             });
+        }
+        function selectDisplay(query, ...element) {
+            element.forEach(elem => {
+                elem.style.display = elem.matches(query)? "" : "none";
+            });
+            element.forEach(elem => {
+                elem.hidden = !elem.matches(query);
+            });
+        }
+        
+        if (!Array.prototype.at) {
+            Array.prototype.at = function (index) {
+                if (isNaN(index)) {
+                    return undefined;
+                }
+
+                index = parseInt(index);
+
+                if (index < 0) {
+                    index += this.length;
+                }
+
+                return this[index];
+            }
         }
     </script>
 </body>
